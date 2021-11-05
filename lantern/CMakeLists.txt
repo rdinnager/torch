@@ -128,6 +128,15 @@ if(DEFINED ENV{CUDA})
       src/AllocatorCuda.cpp
       src/Contrib/SortVertices/sort_vert_kernel.cu
       src/Contrib/SortVertices/sort_vert.cpp
+      src/Contrib/StyleGAN3/filtered_lrelu_wr.cu
+      src/Contrib/StyleGAN3/upfirdn2d.cpp
+      src/Contrib/StyleGAN3/upfirdn2d.cu
+      src/Contrib/StyleGAN3/bias_act.cpp
+      src/Contrib/StyleGAN3/bias_act.cu
+      src/Contrib/StyleGAN3/filtered_lrelu.cpp
+      src/Contrib/StyleGAN3/filtered_lrelu.cu
+      src/Contrib/StyleGAN3/filtered_lrelu_ns.cu
+      src/Contrib/StyleGAN3/filtered_lrelu_rd.cu
   )
 
   cuda_add_library(lantern SHARED ${LANTERN_SRC})
