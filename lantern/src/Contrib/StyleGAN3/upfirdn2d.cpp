@@ -98,10 +98,3 @@ static torch::Tensor upfirdn2d(torch::Tensor x, torch::Tensor f, int upx, int up
 }
 
 //------------------------------------------------------------------------
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
-{
-    m.def("upfirdn2d", &upfirdn2d);
-}
-
-//------------------------------------------------------------------------

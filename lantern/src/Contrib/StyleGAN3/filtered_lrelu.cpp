@@ -290,11 +290,3 @@ static torch::Tensor filtered_lrelu_act(torch::Tensor x, torch::Tensor si, int s
 }
 
 //------------------------------------------------------------------------
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
-{
-    m.def("filtered_lrelu",      &filtered_lrelu);      // The whole thing.
-    m.def("filtered_lrelu_act_", &filtered_lrelu_act);  // Activation and sign tensor handling only. Modifies data tensor in-place.
-}
-
-//------------------------------------------------------------------------

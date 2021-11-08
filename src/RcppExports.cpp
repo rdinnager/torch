@@ -448,6 +448,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cpp_contrib_torch_bias_act
+XPtrTorchTensor cpp_contrib_torch_bias_act(XPtrTorchTensor x, XPtrTorchTensor b, XPtrTorchTensor xref, XPtrTorchTensor yref, XPtrTorchTensor dy, int grad, int dim, int act, float alpha, float gain, float clamp);
+RcppExport SEXP _torch_cpp_contrib_torch_bias_act(SEXP xSEXP, SEXP bSEXP, SEXP xrefSEXP, SEXP yrefSEXP, SEXP dySEXP, SEXP gradSEXP, SEXP dimSEXP, SEXP actSEXP, SEXP alphaSEXP, SEXP gainSEXP, SEXP clampSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< XPtrTorchTensor >::type x(xSEXP);
+    Rcpp::traits::input_parameter< XPtrTorchTensor >::type b(bSEXP);
+    Rcpp::traits::input_parameter< XPtrTorchTensor >::type xref(xrefSEXP);
+    Rcpp::traits::input_parameter< XPtrTorchTensor >::type yref(yrefSEXP);
+    Rcpp::traits::input_parameter< XPtrTorchTensor >::type dy(dySEXP);
+    Rcpp::traits::input_parameter< int >::type grad(gradSEXP);
+    Rcpp::traits::input_parameter< int >::type dim(dimSEXP);
+    Rcpp::traits::input_parameter< int >::type act(actSEXP);
+    Rcpp::traits::input_parameter< float >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< float >::type gain(gainSEXP);
+    Rcpp::traits::input_parameter< float >::type clamp(clampSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_contrib_torch_bias_act(x, b, xref, yref, dy, grad, dim, act, alpha, gain, clamp));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cpp_cuda_is_available
 bool cpp_cuda_is_available();
 RcppExport SEXP _torch_cpp_cuda_is_available() {
@@ -35169,6 +35190,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_torch_create_fn_name", (DL_FUNC) &_torch_create_fn_name, 5},
     {"_torch_cpp_contrib_torch_sparsemax", (DL_FUNC) &_torch_cpp_contrib_torch_sparsemax, 2},
     {"_torch_cpp_contrib_torch_sort_vertices", (DL_FUNC) &_torch_cpp_contrib_torch_sort_vertices, 3},
+    {"_torch_cpp_contrib_torch_bias_act", (DL_FUNC) &_torch_cpp_contrib_torch_bias_act, 11},
     {"_torch_cpp_cuda_is_available", (DL_FUNC) &_torch_cpp_cuda_is_available, 0},
     {"_torch_cpp_cuda_device_count", (DL_FUNC) &_torch_cpp_cuda_device_count, 0},
     {"_torch_cpp_cuda_current_device", (DL_FUNC) &_torch_cpp_cuda_current_device, 0},

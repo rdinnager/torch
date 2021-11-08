@@ -2163,6 +2163,15 @@ HOST_API void* lantern_optional_tensor_value (void* x)
   return ret;
 }
 
+LANTERN_API void* (LANTERN_PTR _lantern_contrib_bias_act) (void* x, void* b, void* xref, void* yref, void* dy, int grad, int dim, int act, float alpha, float gain, float clamp);
+HOST_API void* lantern_contrib_bias_act(void* x, void* b, void* xref, void* yref, void* dy, int grad, int dim, int act, float alpha, float gain, float clamp)
+{
+  LANTERN_CHECK_LOADED
+  void* ret = _lantern_contrib_bias_act(x, b, xref, yref, dy, grad, dim, act, alpha, gain, clamp);
+  LANTERN_HOST_HANDLER;
+  return ret;
+}
+
   /* Autogen Headers -- Start */
   LANTERN_API void* (LANTERN_PTR _lantern__cast_byte_tensor_bool)(void* self, void* non_blocking);
   HOST_API void* lantern__cast_byte_tensor_bool(void* self, void* non_blocking) { LANTERN_CHECK_LOADED void* ret = _lantern__cast_byte_tensor_bool(self, non_blocking); LANTERN_HOST_HANDLER return ret; }
@@ -7749,6 +7758,7 @@ LOAD_SYMBOL(_lantern_OptionalTensorList_size);
 LOAD_SYMBOL(_lantern_OptionalTensorList_at);
 LOAD_SYMBOL(_lantern_OptionalTensorList_at_is_null);
 LOAD_SYMBOL(_lantern_optional_tensor_value);
+LOAD_SYMBOL(_lantern_contrib_bias_act);
   /* Autogen Symbols -- Start */
   LOAD_SYMBOL(_lantern__cast_byte_tensor_bool)
   LOAD_SYMBOL(_lantern__cast_char_tensor_bool)

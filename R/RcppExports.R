@@ -153,6 +153,10 @@ cpp_contrib_torch_sort_vertices <- function(vertices, mask, num_valid) {
     .Call('_torch_cpp_contrib_torch_sort_vertices', PACKAGE = 'torchpkg', vertices, mask, num_valid)
 }
 
+cpp_contrib_torch_bias_act <- function(x, b, xref, yref, dy, grad, dim, act, alpha, gain, clamp) {
+    .Call('_torch_cpp_contrib_torch_bias_act', PACKAGE = 'torchpkg', x, b, xref, yref, dy, grad, dim, act, alpha, gain, clamp)
+}
+
 cpp_cuda_is_available <- function() {
     .Call('_torch_cpp_cuda_is_available', PACKAGE = 'torchpkg')
 }
