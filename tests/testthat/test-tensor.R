@@ -146,6 +146,15 @@ test_that("is_contiguous", {
   
 })
 
+test_that("is_sparse", {
+  
+  x <- torch_randn(10, 10)
+  expect_false(is_sparse(x))
+  x <- torch_sparse_coo_tensor(rbind(sample(10), sample(10)), rnorm(10))
+  expect_true(is_sparse(x))
+  
+})
+
 test_that("is_cuda", {
   x <- torch_randn(10, 10)
   expect_true(!x$is_cuda)
