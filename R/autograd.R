@@ -106,6 +106,19 @@ with_enable_grad <- function(code) {
   )(code)
 }
 
+
+#' Test if gradient mode is enabled
+#'
+#' @return Returns `TRUE` if grad mode is currently enabled.
+#' @export
+#'
+#' @examples
+#' with_enable_grad(is_grad_enabled())
+#' with_no_grad(is_grad_enabled())
+is_grad_enabled <- function() {
+  cpp_autograd_is_enabled()
+}
+
 Tensor$set("active", "grad", function() {
   Tensor$new(ptr = cpp_tensor_grad(self$ptr))
 })
@@ -171,6 +184,41 @@ Tensor$set("public", "register_hook", function(hook) {
 #' @export
 autograd_set_grad_mode <- function(enabled) {
   cpp_autograd_set_grad_mode(enabled)
+}
+
+#' Enable or disable grad
+#' 
+#' Context-manager that enables or disables gradient calculation.
+#' If `enabled = TRUE` enables gradient calculation, otherwise disables it.
+#' 
+#' This context manager is thread local; it will not affect computation in 
+#' other threads.
+#' 
+#' @param enabled Whether to enable grad mode (otherwise disable it).
+#' @param code code to be executed with specified gradient context.
+#' 
+#' @examples 
+#' 
+#' x <- torch_tensor(1, requires_grad=TRUE)
+#' with_set_grad_mode(FALSE, {
+#'   with_set_grad_mode(TRUE, {
+#'     y = x * 2
+#'   })
+#' })
+#' y$backward()
+#' x$grad
+#' 
+#' @export
+with_set_grad_mode <- function(enabled, code) {
+  current_mode <- cpp_autograd_is_enabled()
+  withr::with_(
+    set = function() {
+      cpp_autograd_set_grad_mode(enabled)
+    },
+    reset = function(old) {
+      cpp_autograd_set_grad_mode(current_mode)
+    }
+  )(code)
 }
 
 #' Class representing the context.

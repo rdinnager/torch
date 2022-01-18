@@ -262,8 +262,16 @@ autograd_vjp <- function(func, inputs, v = NULL, create_graph = FALSE, strict = 
       
   })
         
-# 
-#     enable_grad = True if create_graph else torch.is_grad_enabled()
+  if(create_graph) {
+    enable_grad <- TRUE
+  } else {
+    enable_grad <- is_grad_enabled()
+  }
+ 
+  with_set_grad_mode(enable_grad, {
+    grad_res <- .autograd_grad(outputs, inputs, v, create_graph = create_graph)
+    vjp <- fill_in_zeros(grad_res, inputs, strict, create_graph, "back")
+  })
 #     with torch.set_grad_enabled(enable_grad):
 #         grad_res = _autograd_grad(outputs, inputs, v, create_graph=create_graph)
 #         vjp = _fill_in_zeros(grad_res, inputs, strict, create_graph, "back")
