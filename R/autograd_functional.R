@@ -1,6 +1,6 @@
 .as_list <- function(inp, arg_name = NULL, fn_name = NULL) {
-  # Ensures that inp is a tuple of Tensors
-  # Returns whether or not the original inp was a tuple and the tupled version of the input
+  # Ensures that inp is a list of Tensors
+  # Returns whether or not the original inp was a list and the listed version of the input
   if(is.null(arg_name) & is.null(fn_name)) {
     return(.as_list_nocheck(inp))
   }
@@ -12,22 +12,83 @@
   }
   
   for(i in seq_along(inp)) {
-    if(is_torch_tensor())
+    el <- inp[[i]]
+    if(!is_torch_tensor(el)) {
+      if(is_inp_list) {
+        type_error("The {arg_name} given to {fn_name} must be either a torch_tensor or a list of torch_tensors but the",
+                   " value at index {i} has class {class(el)}.")
+      } else {
+        type_error("The {arg_name} given to {fn_name} must be either a torch_tensor or a tuple of torch_tensors but the",
+                   " given {arg_name} has class {class(el)}.")
+      }
+    }
   }
+  
+  return(list(is_inp_list), inp)
 
-  for i, el in enumerate(inp):
-    if not isinstance(el, torch.Tensor):
-      if is_inp_tuple:
-        raise TypeError("The {} given to {} must be either a Tensor or a tuple of Tensors but the"
-                        " value at index {} has type {}.".format(arg_name, fn_name, i, type(el)))
-      else:
-        raise TypeError("The {} given to {} must be either a Tensor or a tuple of Tensors but the"
-                        " given {} has type {}.".format(arg_name, fn_name, arg_name, type(el)))
-
-  return(list(is_inp_tuple, inp))
 }
 
-grad_preprocess <- function(inputs, create_graph, need_graph) {}
+check_requires_grad <- function(inputs, input_type, strict) {
+  # Used to make all the necessary checks to raise nice errors in strict mode.
+  if(!strict) {
+    return(invisible(NULL))
+  }
+
+  if(!input_type %in% c("outputs", "grad_inputs", "jacobian", "hessian")) {
+      runtime_error("Invalid input_type to check_requires_grad")
+  }
+  for(i in seq_along(inputs)) {
+    inp <- inputs[[i]]
+    if(is.null(inp)) {
+      runtime_error("The output of the user-provided function is independent of input {i}.",
+                             " This is not allowed in strict mode.")
+    }
+    if(!inp$requires_grad) {
+      switch(input_type,
+             hessian = runtime_error("The hessian of the user-provided function with respect to input {i}",
+                                 " is independent of the input. This is not allowed in strict mode.",
+                                 " You should ensure that your function is thrice differentiable and that",
+                                 " the hessian depends on the inputs."),
+             jacobian = runtime_error("While computing the hessian, found that the jacobian of the user-provided",
+                                 " function with respect to input {i} is independent of the input. This is not",
+                                 " allowed in strict mode. You should ensure that your function is twice",
+                                 " differentiable and that the jacobian depends on the inputs (this would be",
+                                 " violated by a linear function for example)."),
+             grad_inputs = runtime_error("The gradient with respect to input {i} is independent of the inputs of the",
+                                 " user-provided function. This is not allowed in strict mode."),
+             outputs = runtime_error("Output {i} of the user-provided function does not require gradients.",
+                                 " The outputs must be computed in a differentiable manner from the input",
+                                 " when running in strict mode."))
+    }
+  }
+}
+
+validate_v <- function(v, other, is_other_list) {
+    # This assumes that other is the correct shape, and v should match
+    # Both are assumed to be lists of Tensors
+  if(length(other) != length(v)) {
+    if(is_other_list) {
+      runtime_error("v is a list of invalid length: should be {length(other)} but got {length(v)}.")
+    } else {
+      runtime_error("The given v should contain a single torch_tensor.")
+    }
+  }
+  
+  for(i in seq_along(v)) {
+    el_v <- v[[i]]
+    el_other <- other[[i]]
+    if(el_v$size() != el_other$size()) {
+      prepend = ""
+      if(is_other_list) {
+        prepend = "Entry {i} in "
+      }
+      runtime_error(prepend,
+                    "v has invalid size: should be {el_other$size()} but got {el_v$size()}.")
+    }
+  }
+}
+
+grad_preprocess <- function(inputs, create_graph, need_graph) {
   # Preprocess the inputs to make sure they require gradient
   # inputs is a tuple of Tensors to preprocess
   # create_graph specifies if the user wants gradients to flow back to the Tensors in inputs
@@ -51,6 +112,7 @@ grad_preprocess <- function(inputs, create_graph, need_graph) {}
     } else {
       res[[i]] <- inp$detach()$requires_grad_(need_graph)
     }
+  }
   return(res)
 }
   
@@ -164,44 +226,51 @@ fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
 #' }
 #' inputs <- torch_rand(4, 4)
 #' v <- torch_ones(4)
-#' vjp(exp_reducer, inputs, v)
-#' vjp(exp_reducer, inputs, v, create_graph = TRUE)
+#' autograd_vjp(exp_reducer, inputs, v)
+#' autograd_vjp(exp_reducer, inputs, v, create_graph = TRUE)
 #' adder <- function(x, y) {
 #'   return(2 * x + 3 * y)
 #' }
 #' inputs <- list(torch_rand(2), torch_rand(2))
 #' v <- torch.ones(2)
-#' vjp(adder, inputs, v)
-vjp <- function(func, inputs, v = NULL, create_graph = FALSE, strict = FALSE) {
+#' autograd_vjp(adder, inputs, v)
+autograd_vjp <- function(func, inputs, v = NULL, create_graph = FALSE, strict = FALSE) {
   
   with_enable_grad({
-    is_inputs_tuple, inputs = _as_tuple(inputs, "inputs", "vjp")
-    inputs = _grad_preprocess(inputs, create_graph=create_graph, need_graph=True)
+    inp_list <- .as_list(inputs, "inputs", "autograd_vjp")
+    is_inputs_list <- inp_list[[1]]
+    inputs <- inp_list[[2]]
+    inputs <- grad_preprocess(inputs, create_graph = create_graph, need_graph = TRUE)
 
-    outputs = func(*inputs)
-    is_outputs_tuple, outputs = _as_tuple(outputs, "outputs of the user-provided function", "vjp")
-    _check_requires_grad(outputs, "outputs", strict=strict)
+    outputs <- do.call(func, inputs)
+    out_list <- .as_list(outputs, "outputs of the user-provided function", "autograd_vjp")
+    is_outputs_list <- out_list[[1]] 
+    outputs <- out_list[[2]]
+    check_requires_grad(outputs, "outputs", strict = strict)
 
-    if v is not None:
-      _, v = _as_tuple(v, "v", "vjp")
-      v = _grad_preprocess(v, create_graph=create_graph, need_graph=False)
-      _validate_v(v, outputs, is_outputs_tuple)
-    else:
-      if len(outputs) != 1 or outputs[0].nelement() != 1:
-        raise RuntimeError("The vector v can only be None if the "
-                           "user-provided function returns "
-                           "a single Tensor with a single element.")
+    if(!is.null(v)) {
+      v <- .as_list(v, "v", "autograd_vjp")[[2]]
+      v <- grad_preprocess(v, create_graph = create_graph, need_graph = FALSE)
+      validate_v(v, outputs, is_outputs_list)
+    } else {
+      if(length(outputs) != 1 | outputs[1]$nelement() != 1) {
+        runtime_error("The vector v can only be NULL if the ",
+                           "user-provided function returns ",
+                           "a single torch_tensor with a single element.")
+      }
+    }
+      
   })
         
-
-    enable_grad = True if create_graph else torch.is_grad_enabled()
-    with torch.set_grad_enabled(enable_grad):
-        grad_res = _autograd_grad(outputs, inputs, v, create_graph=create_graph)
-        vjp = _fill_in_zeros(grad_res, inputs, strict, create_graph, "back")
-
-    # Cleanup objects and return them to the user
-    outputs = _grad_postprocess(outputs, create_graph)
-    vjp = _grad_postprocess(vjp, create_graph)
+# 
+#     enable_grad = True if create_graph else torch.is_grad_enabled()
+#     with torch.set_grad_enabled(enable_grad):
+#         grad_res = _autograd_grad(outputs, inputs, v, create_graph=create_graph)
+#         vjp = _fill_in_zeros(grad_res, inputs, strict, create_graph, "back")
+# 
+#     # Cleanup objects and return them to the user
+#     outputs = _grad_postprocess(outputs, create_graph)
+#     vjp = _grad_postprocess(vjp, create_graph)
 
     return(list_postprocess(outputs, is_outputs_tuple), list_postprocess(vjp, is_inputs_tuple))
 }
