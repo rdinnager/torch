@@ -2,7 +2,7 @@
   # Ensures that inp is a list of Tensors
   # Returns whether or not the original inp was a list and the listed version of the input
   if(is.null(arg_name) & is.null(fn_name)) {
-    return(.as_list_nocheck(inp))
+    return(inp)
   }
 
   is_inp_list <- TRUE
@@ -18,14 +18,36 @@
         type_error("The {arg_name} given to {fn_name} must be either a torch_tensor or a list of torch_tensors but the",
                    " value at index {i} has class {class(el)}.")
       } else {
-        type_error("The {arg_name} given to {fn_name} must be either a torch_tensor or a tuple of torch_tensors but the",
+        type_error("The {arg_name} given to {fn_name} must be either a torch_tensor or a list of torch_tensors but the",
                    " given {arg_name} has class {class(el)}.")
       }
     }
   }
   
-  return(list(is_inp_list), inp)
+  return(list(is_inp_list, inp))
 
+}
+
+list_postprocess <- function(res, to_unpack) {
+    # Unpacks a potentially nested list of Tensors
+    # to_unpack should be a single boolean or a vector of two booleans.
+    # It is used to:
+    # - invert .as_list when res should match the inp given to .as_list
+    # - optionally remove nesting of two lists created by multiple calls to .as_list
+    if(length(to_unpack) > 1) {
+        stopifnot(length(to_unpack) == 2)
+        if(!to_unpack[2]) {
+            res <- lapply(res, function(x) x[[1]]) 
+        }
+        if(!to_unpack[1]) {
+            res <- res[[1]]
+        }
+    } else {
+        if(!to_unpack) {
+            res <- res[[1]]
+        }
+    }
+    return(res)
 }
 
 check_requires_grad <- function(inputs, input_type, strict) {
@@ -115,6 +137,20 @@ grad_preprocess <- function(inputs, create_graph, need_graph) {
   }
   return(res)
 }
+
+grad_postprocess <- function(inputs, create_graph) {
+    # Postprocess the generated Tensors to avoid returning Tensors with history when the user did not
+    # request it.
+    if(is_torch_tensor(inputs[[1]])) {
+        if(!create_graph) {
+          return(lapply(inputs, function(x) x$detach()))
+        } else {
+          return(inputs)
+        }
+    } else {
+        return(lapply(inputs, grad_postprocess, create_graph = create_graph))
+    }
+}
   
 fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
   # Used to detect None in the grads and depending on the flags, either replace them
@@ -164,7 +200,7 @@ fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
   
 .autograd_grad <- function(outputs, inputs, 
                            grad_outputs = NULL, create_graph = FALSE, 
-                           retain_graph = NULL) {
+                           retain_graph = create_graph) {
   # Note: removed is_grads_batched as an argument. This appears to be an (undocumented?) argument
   # to torch.autograd.grad in Python (https://github.com/pytorch/pytorch/blob/2faccc2f5d75346a50c974898ea12362672ae757/torch/autograd/__init__.py#L185), 
   # but definitely is not an argument in torch::autograd_grad
@@ -182,7 +218,7 @@ fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
   
   index <- 0
   for(i in seq_along(outputs)) {
-    if(!is.null(outputs) & outputs$requires_grad) {
+    if(!is.null(outputs[[i]]) & outputs[[i]]$requires_grad) {
       index <- index + 1
       new_outputs[[index]] <- outputs[[i]]
       new_grad_outputs[[index]] <- grad_outputs[[i]]
@@ -193,8 +229,8 @@ fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
     # No differentiable output, we don't need to call the autograd engine
     return(replicate(length(inputs), NULL))
   } else {
-    return(autograd_grad(new_outputs, inputs, new_grad_outputs, allow_unused=TRUE,
-                               create_graph=create_graph, retain_graph=retain_graph))
+    return(autograd_grad(new_outputs, inputs, new_grad_outputs, allow_unused = TRUE,
+                               create_graph = create_graph, retain_graph = retain_graph))
   }
 }
 
@@ -221,13 +257,13 @@ fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
 #' @export
 #'
 #' @examples
-#' exp_reducer <- function(x) {
-#'   return(x$exp()$sum(dim = 2))
-#' }
-#' inputs <- torch_rand(4, 4)
-#' v <- torch_ones(4)
-#' autograd_vjp(exp_reducer, inputs, v)
-#' autograd_vjp(exp_reducer, inputs, v, create_graph = TRUE)
+# exp_reducer <- function(x) {
+#   return(x$exp()$sum(dim = 2))
+# }
+# inputs <- torch_rand(4, 4)
+# v <- torch_ones(4)
+# autograd_vjp(exp_reducer, inputs, v)
+# autograd_vjp(exp_reducer, inputs, v, create_graph = TRUE)
 #' adder <- function(x, y) {
 #'   return(2 * x + 3 * y)
 #' }
@@ -272,13 +308,11 @@ autograd_vjp <- function(func, inputs, v = NULL, create_graph = FALSE, strict = 
     grad_res <- .autograd_grad(outputs, inputs, v, create_graph = create_graph)
     vjp <- fill_in_zeros(grad_res, inputs, strict, create_graph, "back")
   })
-#     with torch.set_grad_enabled(enable_grad):
-#         grad_res = _autograd_grad(outputs, inputs, v, create_graph=create_graph)
-#         vjp = _fill_in_zeros(grad_res, inputs, strict, create_graph, "back")
-# 
-#     # Cleanup objects and return them to the user
-#     outputs = _grad_postprocess(outputs, create_graph)
-#     vjp = _grad_postprocess(vjp, create_graph)
 
-    return(list_postprocess(outputs, is_outputs_tuple), list_postprocess(vjp, is_inputs_tuple))
+  # Cleanup objects and return them to the user
+  outputs <- grad_postprocess(outputs, create_graph)
+  vjp <- grad_postprocess(vjp, create_graph)
+
+  return(list(func_output = list_postprocess(outputs, is_outputs_list), 
+              vjp = list_postprocess(vjp, is_inputs_list)))
 }

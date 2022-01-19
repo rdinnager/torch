@@ -56,6 +56,7 @@ Collate:
     'RcppExports.R'
     'tensor.R'
     'autograd.R'
+    'autograd_functional.R'
     'backends.R'
     'call_torch_function.R'
     'codegen-utils.R'
