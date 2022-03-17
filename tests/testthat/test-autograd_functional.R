@@ -6,7 +6,7 @@ test_that("autograd_vjp errors correctly", {
     return(list(3 * a$narrow(1, 1, 4), "bar"))
   }
   inp <- torch_rand(4)
-  v <- torch$ones(3)
+  v <- torch_ones(4)
   expect_error(res <- autograd_vjp(foo, list(inp, 2), v), 
                "The inputs given to autograd_vjp must be either a torch_tensor")
 

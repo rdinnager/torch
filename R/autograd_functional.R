@@ -257,13 +257,13 @@ fill_in_zeros <- function(grads, refs, strict, create_graph, stage) {
 #' @export
 #'
 #' @examples
-# exp_reducer <- function(x) {
-#   return(x$exp()$sum(dim = 2))
-# }
-# inputs <- torch_rand(4, 4)
-# v <- torch_ones(4)
-# autograd_vjp(exp_reducer, inputs, v)
-# autograd_vjp(exp_reducer, inputs, v, create_graph = TRUE)
+#' exp_reducer <- function(x) {
+#'   return(x$exp()$sum(dim = 2))
+#' }
+#' inputs <- torch_rand(4, 4)
+#' v <- torch_ones(4)
+#' autograd_vjp(exp_reducer, inputs, v)
+#' autograd_vjp(exp_reducer, inputs, v, create_graph = TRUE)
 #' adder <- function(x, y) {
 #'   return(2 * x + 3 * y)
 #' }
@@ -289,7 +289,7 @@ autograd_vjp <- function(func, inputs, v = NULL, create_graph = FALSE, strict = 
       v <- grad_preprocess(v, create_graph = create_graph, need_graph = FALSE)
       validate_v(v, outputs, is_outputs_list)
     } else {
-      if(length(outputs) != 1 | outputs[1]$nelement() != 1) {
+      if(length(outputs) != 1 | outputs[[1]]$numel() != 1) {
         runtime_error("The vector v can only be NULL if the ",
                            "user-provided function returns ",
                            "a single torch_tensor with a single element.")
