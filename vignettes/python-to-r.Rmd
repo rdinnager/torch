@@ -11,7 +11,8 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = identical(Sys.getenv("TORCH_TEST", unset = "0"), "1")
+  eval = identical(Sys.getenv("TORCH_TEST", unset = "0"), "1"),
+  purl = FALSE
 )
 ```
 
@@ -23,7 +24,7 @@ A complete example from Python to R is shown below. This is an extension of the 
 
 An artificial neural net is implemented below in Python. Note the final line which uses torch.save().
 
-```{python eval=FALSE]
+```python
 import torch
 import numpy as np
 

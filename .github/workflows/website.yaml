@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: ["pkgdown"]
-    branches: ["master"]
-    types: 
+    branches: ["master", "main"]
+    types:
       - completed
 
 name: Merge websites
